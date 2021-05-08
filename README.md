@@ -7,6 +7,7 @@ Ugly javascript which:
 * Read/Writes auction state and team rosters/budgets to a google sheet.
 
 # What (pictures)
+<img width="505" alt="Screenshot 2021-05-08 at 15 33 48" src="https://user-images.githubusercontent.com/2912093/117543014-426d5880-b01b-11eb-86ee-c8d8f31b1bb6.png">
 <img width="465" alt="Screenshot 2021-05-04 at 20 20 29" src="https://user-images.githubusercontent.com/2912093/117058248-af80a580-ad1e-11eb-85b6-00a3f9b85740.png">
 <img width="972" alt="Screenshot 2021-05-04 at 20 22 11" src="https://user-images.githubusercontent.com/2912093/117058362-d212be80-ad1e-11eb-97ba-a5a01559e28b.png">
 <img width="546" alt="Screenshot 2021-05-04 at 20 17 44" src="https://user-images.githubusercontent.com/2912093/117058019-6e889100-ad1e-11eb-87c2-ff3ee750f543.png">
