@@ -1,7 +1,7 @@
 // Main leroy
-var POST_URL = "CHANGME";
+var POST_URL = "CHANGEME";
 // Test leory
-// var POST_URL = "CHANGME";
+// var POST_URL = "CHANGEME";
 
 // Auction stuff
 var AUCTION_END_TIME_HOURS = 21;
@@ -10,10 +10,15 @@ var NOMINATOR_USER = "nominator";
 var TIMEZONE = "GMT+1"
 
 // Sheet stuff
-var DRAFT_SUMMARY_SHEET_ID = 'CHANGME';
+var DRAFT_SUMMARY_SHEET_ID = 'CHANGEME';
 var AUCTIONS_SHEET = "auctions"
 var RAW_BIDS_SHEET = "raw-bids"
+var SUMMARY_SHEET = "summary"
 var ROSTERS_SHEET_ID = "rosters"
+var NUMBER_OF_TEAMS = "14"
+var SUMMARY_SHEET_USERS_ROW_NUM = "2"
+var SUMMARY_SHEET_EMAIL_COLUMN_NUM = "2"
+var SUMMARY_SHEET_MAX_BID_COLUMN_NUM = "10"
 var AUCTIONS_SHEET_PLAYERA_COLUMN_NUM = "0"
 var AUCTIONS_SHEET_PLAYERB_COLUMN_NUM = "1"
 var AUCTIONS_SHEET_DATE_COLUMN_NUM = "2"
@@ -23,6 +28,7 @@ var AUCTIONS_SHEET_URL_COLUMN_LETTER = "D"
 // Nonsense
 var END_OF_AUCTION_MSG = "A Lannister always pays his debts."
 var GOOD_LUCK_MSG = "May the odds be ever in your favor."
+var INVALID_BID_MSG = "Computer says no."
 var GET_READY_MSG = "So many activities!"
 
 // Form stuff
@@ -61,6 +67,7 @@ Auction Tie Breakers
 - In the event of equal bids, a random winner will be selected from highest bidders.
 `
 
+// Run this manually each week
 function createWeeklyAuctionForms() {
   var auctions = loadAuctionsFromSheet();
   var auctionLinks = "This week's auctions are now live for early bidding:\n";
@@ -139,7 +146,7 @@ function addTriggers(form, auction) {
   endDate.setMinutes(0);
   endDate.setSeconds(0);
   ScriptApp.newTrigger("endDailyAuctions").timeBased().at(endDate).create();
-  //ScriptApp.newTrigger("onFormSubmitLogBid").forForm(form).onFormSubmit().create();
+  ScriptApp.newTrigger("validateAndLogBid").forForm(form).onFormSubmit().create();
 };
 
 //Add starting bid to player auctions: a $1 bid for each player
@@ -164,15 +171,27 @@ function submitNominatorBidsForAuction(form) {
   form.setLimitOneResponsePerUser(true);
 };
 
-function onFormSubmitLogBid(e) {
-  console.log("Raw event: " + JSON.stringify(e));
+// Set this up with a onSubmit trigger for each form
+function validateAndLogBid(e) {
   var user = e.response.getRespondentEmail().toLowerCase();
+  var maxBidForUser = retrieveMaxBidFromSheet(user)
   var bids = e.response.getItemResponses();
-    for (var i = 0; i < bids.length; i++) {
-      console.log(user + " bid $" + parseInt(bids[i].getResponse()) + " for " + ltrim(bids[i].getItem().getTitle()));
-  };
+  var isABidOverMax = false;
+  var bidValues = "";
+  for (var i = 0; i < bids.length; i++) {
+    bidValues += bids[i].getResponse() + " ";
+    if (parseInt(bids[i].getResponse()) > maxBidForUser) {
+      isABidOverMax = true;
+    }
+  } 
+  console.log("User '" + user + "' has a max bid of " + maxBidForUser + " and placed the following: " + bidValues);
+  if (isABidOverMax) {
+    var validationErrorMsg = "Hey " + user + ", you sure 'bout that bid? Wallet's looking a little light fella.";
+    postToDiscord([], validationErrorMsg, INVALID_BID_MSG)
+  }
 };
 
+// Set this up with a daily timer trigger
 function dailyAuctionsReminder() {
   var auctions = loadAuctionsFromSheet();
   var auctionLinks = ""
@@ -251,9 +270,22 @@ function parseBidsFromResponses(form) {
       })
     };
   };    
-  console.log("Bids received & parsed for auction " + form.getTitle() + " : " + JSON.stringify(allBids)) 
+  console.log("Bids received & parsed for auction " + form.getTitle() + " : " + JSON.stringify(allBids));
   return allBids;
 };
+
+function retrieveMaxBidFromSheet(user) {
+  var sheet = SpreadsheetApp.openById(DRAFT_SUMMARY_SHEET_ID).getSheetByName(SUMMARY_SHEET);
+  var searchRange = sheet.getRange(SUMMARY_SHEET_USERS_ROW_NUM, SUMMARY_SHEET_EMAIL_COLUMN_NUM, NUMBER_OF_TEAMS, SUMMARY_SHEET_MAX_BID_COLUMN_NUM).getValues();
+  var maxBid = null;
+  for(i = 0; i < searchRange.length; i++) {
+    if(searchRange[i][0] == user) {
+        maxBid = searchRange[i][(SUMMARY_SHEET_MAX_BID_COLUMN_NUM - SUMMARY_SHEET_EMAIL_COLUMN_NUM)];
+        break;
+    }
+  } 
+  return maxBid;
+}
 
 function writeToSheets(bids) {
   var data = []
