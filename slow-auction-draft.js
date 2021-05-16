@@ -1,7 +1,7 @@
 // Main leroy
-//var POST_URL = "CHANGEME"
+var POST_URL = "CHANGME";
 // Test leory
-var POST_URL = "CHANGEME";
+// var POST_URL = "CHANGME";
 
 // Auction stuff
 var AUCTION_END_TIME_HOURS = 21;
@@ -10,19 +10,20 @@ var NOMINATOR_USER = "nominator";
 var TIMEZONE = "GMT+1"
 
 // Sheet stuff
-var DRAFT_SUMMARY_SHEET_ID = 'CHANGEME';
+var DRAFT_SUMMARY_SHEET_ID = 'CHANGME';
 var AUCTIONS_SHEET = "auctions"
 var RAW_BIDS_SHEET = "raw-bids"
-var MAX_NUMBER_PLAYERS_IN_AUCTION = 6;
+var ROSTERS_SHEET_ID = "rosters"
 var AUCTIONS_SHEET_PLAYERA_COLUMN_NUM = "0"
 var AUCTIONS_SHEET_PLAYERB_COLUMN_NUM = "1"
-var AUCTIONS_SHEET_PLAYERC_COLUMN_NUM = "2"
-var AUCTIONS_SHEET_PLAYERD_COLUMN_NUM = "3"
-var AUCTIONS_SHEET_PLAYERE_COLUMN_NUM = "4"
-var AUCTIONS_SHEET_PLAYERF_COLUMN_NUM = "5"
-var AUCTIONS_SHEET_DATE_COLUMN_NUM = "6"
-var AUCTIONS_SHEET_URL_COLUMN_NUM = "7"
-var AUCTIONS_SHEET_URL_COLUMN_LETTER = "H"
+var AUCTIONS_SHEET_DATE_COLUMN_NUM = "2"
+var AUCTIONS_SHEET_URL_COLUMN_NUM = "3"
+var AUCTIONS_SHEET_URL_COLUMN_LETTER = "D"
+
+// Nonsense
+var END_OF_AUCTION_MSG = "A Lannister always pays his debts."
+var GOOD_LUCK_MSG = "May the odds be ever in your favor."
+var GET_READY_MSG = "So many activities!"
 
 // Form stuff
 var BIDDING_CONFIRMATION_MESSAGE = "You can come back and edit you bid right up until the auction closes.\nMay the odds be ever in your favour."
@@ -33,11 +34,10 @@ Live budgets can be found here: CHANGEME
 
 Auction Rules:
 - Starting budget is $10,000.
-- The auction will close at 9pm, at which point the form will lock.
+- The auction will close at 9pm GMT, at which point the form will lock.
 - You can edit your bids as many times as you want.
-- You need to draft a full roster (14 players) but it doesn't have to be a valid starting lineup.
-- As soon as you gave 14 players, you draft ends.                                   
-- Franchise's who possess a keeper start on 1-player, so will need to draft 13 to complete their draft.
+- You need to draft a full roster (15 players) but it doesn't have to be a valid starting lineup.
+- As soon as you have 15 players, your draft ends.                                   
 
 Auction Format:
 - Auctions are conducted using the Vickery Method.
@@ -54,8 +54,8 @@ Auction Technical Details:
 
 Auction Results:
 - Full results (who bid what) will be send to the Leroy Discord channel & draft summary spread sheet after auction closes.
-- If you don't want to bid on a player then simply leave the player's box empty.
-- If you don't wish to bid on any players then you don't even need to submit the form.
+- If you don't want to bid on a player, leave the player's box empty.
+- If you don't want to bid on any players, don't even need to submit the form.
 
 Auction Tie Breakers
 - In the event of equal bids, a random winner will be selected from highest bidders.
@@ -80,29 +80,26 @@ function createWeeklyAuctionForms() {
     submitNominatorBidsForAuction(f);
     addTriggers(f, a)
     auctionLinks += buildPrettyAuctionLink(f, a);
-    Utilities.sleep(3000);
   };
  
-  postToDiscord([], auctionLinks);
+  postToDiscord([], auctionLinks, GET_READY_MSG);
 };
 
 function createFormForAuction(a) {
-  var endDate = new Date (a[AUCTIONS_SHEET_DATE_COLUMN_NUM]);
-  var prettyEndDate = Utilities.formatDate(endDate, TIMEZONE, "MMMM dd");
-  console.log("Creating new auction/form for date: " + prettyEndDate);
-  var form = FormApp.create('Auction - ' + prettyEndDate);  
+  playerA = a[AUCTIONS_SHEET_PLAYERA_COLUMN_NUM]
+  playerB = a[AUCTIONS_SHEET_PLAYERB_COLUMN_NUM]
+  var players = (playerB === "" ) ? [playerA] : [playerA, playerB]; // if second player is blank then this is a single player auction
+
+  console.log("Creating new auction/form for: " + players)
+  var form = FormApp.create('Auction - ' + players);  
   form.setDescription(FORM_DESCRIPTION);
   form.setCollectEmail(true);
   form.setAllowResponseEdits(true);
   form.setLimitOneResponsePerUser(true);
   form.setConfirmationMessage(BIDDING_CONFIRMATION_MESSAGE);
 
-  for (i = 0; i < MAX_NUMBER_PLAYERS_IN_AUCTION; i++) {
-    if (a[i] === "") {
-      console.log("player at position " + i + " is empty so skipping.");
-      continue;
-    }
-    var item = form.addTextItem().setTitle(a[i]);
+  for (i = 0; i < players.length; i++) {
+    var item = form.addTextItem().setTitle(players[i]);
     var validBid = FormApp.createTextValidation().setHelpText("Minimum bid is 2, max is <check spreadsheet>").requireNumberBetween(2, 10000).build();
     item.setValidation(validBid);
   };
@@ -119,7 +116,7 @@ function validateAuction(a) {
 }
 
 function doesAuctionAlreadyExists(auction) {
-  console.log("Checking to see if auction/form already exists for playerA and others: " + auction[AUCTIONS_SHEET_PLAYERA_COLUMN_NUM])
+  console.log("Checking to see if auction/form already exists for players: " + auction[AUCTIONS_SHEET_PLAYERA_COLUMN_NUM] + " & " + auction[AUCTIONS_SHEET_PLAYERB_COLUMN_NUM])
   if (auction[AUCTIONS_SHEET_URL_COLUMN_NUM] !== "" ) {
     console.log("...Auction/form already exists.")
     return true;
@@ -137,7 +134,7 @@ function isAuctionToday(auction) {
 
 function addTriggers(form, auction) { 
   console.log("Adding trigger to log bids on submissions");
-  var endDate = new Date(auction[AUCTIONS_SHEET_DATE_COLUMN_NUM]);
+  var endDate = new Date(auction[AUCTIONS_SHEET_DATE_COLUMN_NUM]); // Date is 3rd column in auction row
   endDate.setHours(AUCTION_END_TIME_HOURS);
   endDate.setMinutes(0);
   endDate.setSeconds(0);
@@ -178,7 +175,7 @@ function onFormSubmitLogBid(e) {
 
 function dailyAuctionsReminder() {
   var auctions = loadAuctionsFromSheet();
-  var auctionLinks = buildPrettyDraftLinks() + "\n";
+  var auctionLinks = ""
   auctionLinks += "Today's auction(s) can be found here:\n";
   console.log("Checking to see which auctions are ending today...")
   for (var i = 0; i < auctions.length; i++) {
@@ -191,8 +188,8 @@ function dailyAuctionsReminder() {
     var f = FormApp.openByUrl(a[AUCTIONS_SHEET_URL_COLUMN_NUM]);
     auctionLinks += buildPrettyAuctionLink(f, a);
   };
- 
-  postToDiscord([], auctionLinks)
+  auctionLinks += "\n" + buildPrettyDraftLinks();
+  postToDiscord([], auctionLinks, GOOD_LUCK_MSG)
 };
 
 function endDailyAuctions() {
@@ -227,7 +224,7 @@ function endDailyAuctions() {
       "value": summaryMsg
     });
   
-    postToDiscord(auctionSummaries, buildPrettyDraftLinks());
+    postToDiscord(auctionSummaries, buildPrettyDraftLinks(), END_OF_AUCTION_MSG);
   };
 };
 
@@ -286,8 +283,13 @@ function writeToSheets(bids) {
   };
 };
 
+// assumes bids are being passed in sorted from highest to lowest.
+//function checkForWinnerTie(bids) {
+    // Check to see if there is a tie, if there is, then randomly pick a winner.
+//};
+
 // I accept the description seperate since discord allow you to enrich this field with markdown
-function postToDiscord(message, description) {
+function postToDiscord(message, description, title) {
   var options = {
     "muteHttpExceptions": false,
     "method": "post",
@@ -297,7 +299,7 @@ function postToDiscord(message, description) {
     "payload": JSON.stringify({
       "content": "", /// Not an empty string
       "embeds": [{
-        "title": "Ice up son.",
+        "title": title,
         "description": description,
         "fields": message,
         "footer": {
@@ -366,20 +368,16 @@ function buildCongratsMsg(sortedBids, player) {
 
 function buildPrettyDraftLinks() {
   var ssURL = SpreadsheetApp.openById(DRAFT_SUMMARY_SHEET_ID).getUrl();
-  return "Updated rosters and budgets can be found [here](" + ssURL + ")";
+  return "Updated rosters and budgets can be found [here](" + ssURL + ").";
 };
 
 function buildPrettyAuctionLink(form, auction) {
+  var playerA = auction[AUCTIONS_SHEET_PLAYERA_COLUMN_NUM];
+  var playerB = auction[AUCTIONS_SHEET_PLAYERB_COLUMN_NUM];
   var endDate = new Date (auction[AUCTIONS_SHEET_DATE_COLUMN_NUM]);
   endDate.setHours(AUCTION_END_TIME_HOURS);
   var prettyEndDate = Utilities.formatDate(endDate, TIMEZONE, "MMMM dd HH:mm");
-  var playersUnderAuction = "";
-  for (var i = 0; i < MAX_NUMBER_PLAYERS_IN_AUCTION; i++) {
-    if (auction[i] !== "" ) {
-      playersUnderAuction += auction[i] + " & ";
-    }
-  };
-  return "[" + playersUnderAuction + "](" + form.getPublishedUrl() + ") - ends " + prettyEndDate + "\n"
+  return "[" + playerA + " & " + playerB + "](" + form.getPublishedUrl() + ") - ends " + prettyEndDate + "\n"
 };
 
 // ========================================= Utility ======================================================
