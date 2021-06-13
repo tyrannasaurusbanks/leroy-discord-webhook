@@ -1,7 +1,7 @@
 // Main leroy
-var POST_URL = "CHANGEME";
+var POST_URL = "DISCORD_WEBHOOK_URL_CHANGEME;
 // Test leory
-// var POST_URL = "CHANGEME";
+// var POST_URL = "DISCORD_WEBHOOK_URL_CHANGEME";
 
 // Auction stuff
 var AUCTION_END_TIME_HOURS = 21;
@@ -10,7 +10,7 @@ var NOMINATOR_USER = "nominator";
 var TIMEZONE = "GMT+1"
 
 // Sheet stuff
-var DRAFT_SUMMARY_SHEET_ID = 'CHANGEME';
+var DRAFT_SUMMARY_SHEET_ID = 'GSHEET_ID_CHANGEME';
 var AUCTIONS_SHEET = "auctions"
 var RAW_BIDS_SHEET = "raw-bids"
 var SUMMARY_SHEET = "summary"
@@ -64,7 +64,7 @@ Auction Results:
 - If you don't want to bid on any players, don't even need to submit the form.
 
 Auction Tie Breakers
-- In the event of equal bids, a random winner will be selected from highest bidders.
+- In the event of equal bids, check with the commissioner for the tie breaker.
 `
 
 // Run this manually each week
@@ -183,7 +183,7 @@ function validateAndLogBid(e) {
     if (parseInt(bids[i].getResponse()) > maxBidForUser) {
       isABidOverMax = true;
     }
-  } 
+  }
   console.log("User '" + user + "' has a max bid of " + maxBidForUser + " and placed the following: " + bidValues);
   if (isABidOverMax) {
     var validationErrorMsg = "Hey " + user + ", you sure 'bout that bid? Wallet's looking a little light fella.";
@@ -378,7 +378,7 @@ function formatBidsForDiscord(bids, player) {
   var detailedBids = ""
   // There will always be atleast 1 bid since the opening bid is value=1 from the nominator and created when the form opens.
   for (var i = 0; i < bids.length; i++) {
-    detailedBids += "$" + bids[i].bid + " - " + bids[i].user + " at " + Utilities.formatDate(bids[i].time, TIMEZONE, "HH:mm") + "\n"
+    detailedBids += "$" + bids[i].bid + " - " + bids[i].user + " at " + Utilities.formatDate(bids[i].time, TIMEZONE, "MM/dd HH:mm") + "\n"
   };
   return {
     "name": player,
