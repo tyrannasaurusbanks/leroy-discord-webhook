@@ -42,8 +42,8 @@ Auction Rules:
 - Starting budget is $10,000.
 - The auction will close at 9pm GMT, at which point the form will lock.
 - You can edit your bids as many times as you want.
-- You need to draft a full roster (15 players) but it doesn't have to be a valid starting lineup.
-- As soon as you have 15 players, your draft ends.                                   
+- If you don't want to bid on a player, leave the player's box empty.
+- If you don't want to bid on any players, you don't even need to submit the form.                                   
 
 Auction Format:
 - Auctions are conducted using the Vickery Method.
@@ -57,15 +57,7 @@ Auction Technical Details:
 - If you bid more than your 'max bid' then your bid will be struck off. 
 - If you win both auctions but cannot afford both players then the highest bid will take priority and your bids from the other player auction(s) will be stuck off.
 - If you win both auctions with equal bids, the first listed auction will take priority.
-
-Auction Results:
-- Full results (who bid what) will be send to the Leroy Discord channel & draft summary spread sheet after auction closes.
-- If you don't want to bid on a player, leave the player's box empty.
-- If you don't want to bid on any players, don't even need to submit the form.
-
-Auction Tie Breakers
-- In the event of equal bids, check with the commissioner for the tie breaker.
-`
+- In the event of equal bids, check with the commissioners for tie breakers or a ruling.`
 
 // Run this manually each week
 function createWeeklyAuctionForms() {
@@ -104,10 +96,11 @@ function createFormForAuction(a) {
   form.setAllowResponseEdits(true);
   form.setLimitOneResponsePerUser(true);
   form.setConfirmationMessage(BIDDING_CONFIRMATION_MESSAGE);
+  form.setCustomClosedFormMessage("Auction & bid submissions are now closed.")
 
   for (i = 0; i < players.length; i++) {
     var item = form.addTextItem().setTitle(players[i]);
-    var validBid = FormApp.createTextValidation().setHelpText("Minimum bid is 2, max is <check spreadsheet>").requireNumberBetween(2, 10000).build();
+    var validBid = FormApp.createTextValidation().setHelpText("Minimum bid is 2. Check the Spreadsheet to see what your max is.").requireNumberBetween(2, 10000).build();
     item.setValidation(validBid);
   };
   
@@ -162,7 +155,7 @@ function submitNominatorBidsForAuction(form) {
       nominatorResponse.withItemResponse(itemresponse);  
     }
   }
-  // Google's docs are shit. Subit don't work if you need emails or require sign in, and I can't supply them to the fake form response here.
+  // Google's docs are shit. Submit doesn't work if you need emails or require sign in, and I can't supply them to the fake form response here.
   // So as a hack, i choose to disable them, submit and then reenable.
   form.setLimitOneResponsePerUser(false);
   form.setCollectEmail(false);
@@ -184,7 +177,7 @@ function validateAndLogBid(e) {
       isABidOverMax = true;
     }
   }
-  console.log("User '" + user + "' has a max bid of " + maxBidForUser + " and placed the following: " + bidValues);
+  console.log("User='" + user + "' max_bid='" + maxBidForUser + "' bids=[" + bidValues + "]");
   if (isABidOverMax) {
     var validationErrorMsg = "Hey " + user + ", you sure 'bout that bid? Wallet's looking a little light fella.";
     postToDiscord([], validationErrorMsg, INVALID_BID_MSG)
@@ -244,6 +237,7 @@ function endDailyAuctions() {
     });
   
     postToDiscord(auctionSummaries, buildPrettyDraftLinks(), END_OF_AUCTION_MSG);
+
   };
 };
 
@@ -315,11 +309,6 @@ function writeToSheets(bids) {
   };
 };
 
-// assumes bids are being passed in sorted from highest to lowest.
-//function checkForWinnerTie(bids) {
-    // Check to see if there is a tie, if there is, then randomly pick a winner.
-//};
-
 // I accept the description seperate since discord allow you to enrich this field with markdown
 function postToDiscord(message, description, title) {
   var options = {
@@ -329,6 +318,7 @@ function postToDiscord(message, description, title) {
       "Content-Type": "application/json",
     },
     "payload": JSON.stringify({
+      "username": "Roybot",
       "content": "", /// Not an empty string
       "embeds": [{
         "title": title,
@@ -367,9 +357,8 @@ function getOrCreateSheet(user) {
 }
   
 function closeAuction(form) {
-  console.log("Closing form for responses.")
+  console.log("Closing form for responses.");
   form.setAcceptingResponses(false);
-  form.setCustomClosedFormMessage("Auction & bid submissions are now closed.");
 };
 
 // --------------------------------------- Formatting ---------------------------------------------
@@ -415,6 +404,7 @@ function buildPrettyAuctionLink(form, auction) {
 // ========================================= Utility ======================================================
 
 function randomQuote(winner, winningBid) {
+  // "No half measures"
   return "Clear eyes, full hearts, can't lose." // Could add a note here to the updated spreadsheet with new budgets?
 };
 
